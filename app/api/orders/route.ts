@@ -27,9 +27,14 @@ export async function POST(request: Request) {
     const orderNumber=`HH-${new Date().toISOString().slice(0,10).replace(/-/g,"")}-${randomUUID().slice(0,8).toUpperCase()}`;
     const order={orderNumber,lines,coupon,...pricing,status:"demo",createdAt:new Date().toISOString()};
     // Preview orders deliberately omit personal information from disk.
-    const directory=path.join(process.cwd(),".local","orders");
-    await mkdir(directory,{recursive:true});
-    await writeFile(path.join(directory,`${orderNumber}.json`),JSON.stringify(order,null,2),{flag:"wx"});
+    // Persist locally when the filesystem is writable; skip on serverless hosts.
+    try {
+      const directory=path.join(process.cwd(),".local","orders");
+      await mkdir(directory,{recursive:true});
+      await writeFile(path.join(directory,`${orderNumber}.json`),JSON.stringify(order,null,2),{flag:"wx"});
+    } catch {
+      // Read-only deploy environments still return a valid demo confirmation.
+    }
     return Response.json(order,{status:201});
   } catch { return Response.json({error:"We couldn’t save this preview order. Please try again."},{status:500}); }
 }
