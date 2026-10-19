@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function NotFound() { return <main className="wrap text-page"><span className="eyebrow">404 · A little lost</span><h1>That page has moved out.</h1><p>Find something lovely in the collection, or make yourself at home.</p><div className="button-row"><Link className="button" href="/">Back home</Link><Link className="button outline" href="/shop">Explore the collection</Link></div></main>; }
