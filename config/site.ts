@@ -4,6 +4,6 @@ export const site = {
   tagline: "Live well, at home.",
   promise: "Calm, well-made things for the rooms you actually live in.",
   currency: "TND",
-  freeShipping: 150,
-  shipping: 8,
+  freeShipping: 0,
+  shipping: 7,
 };

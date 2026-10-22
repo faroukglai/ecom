@@ -1,2 +1,5 @@
-import { Storefront } from "@/components/storefront";
-export default function Home() { return <Storefront path={[]} />; }
+import { StorefrontPage } from "@/components/storefront-page";
+
+export default function Home() {
+  return <StorefrontPage path={[]}/>;
+}
