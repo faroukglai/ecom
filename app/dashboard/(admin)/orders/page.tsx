@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth";
-import { money } from "@/lib/pricing";
+import { dashMoney, orderStatusLabel } from "@/lib/dashboard-i18n";
+import { getDashCopy } from "@/lib/dashboard-lang";
 
 export default async function OrdersPage() {
+  const { lang, t } = await getDashCopy();
   const { supabase } = await requireAdmin();
   const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });
   const orders = data ?? [];
@@ -10,14 +12,15 @@ export default async function OrdersPage() {
     <>
       <div className="dash-topbar">
         <div>
-          <div className="dash-crumb">Orders</div>
-          <h1>Orders</h1>
+          <div className="dash-crumb">{t.navOrders}</div>
+          <h1>{t.ordersTitle}</h1>
         </div>
       </div>
       <section className="dash-card">
         {orders.length ? (
+          <div className="dash-table-wrap">
           <table className="dash-table">
-            <thead><tr><th>Order</th><th>Customer</th><th>Phone</th><th>Location</th><th>Total</th><th>Status</th></tr></thead>
+            <thead><tr><th>{t.colOrder}</th><th>{t.colCustomer}</th><th>{t.colPhone}</th><th>{t.colLocation}</th><th>{t.colTotal}</th><th>{t.colStatus}</th></tr></thead>
             <tbody>
               {orders.map((order) => (
                 <tr key={order.id}>
@@ -25,13 +28,14 @@ export default async function OrdersPage() {
                   <td>{order.customer_name}</td>
                   <td>{order.phone}</td>
                   <td>{order.location}</td>
-                  <td>{money(Number(order.total))}</td>
-                  <td><span className={`dash-status ${order.status}`}>{order.status}</span></td>
+                  <td>{dashMoney(Number(order.total), lang)}</td>
+                  <td><span className={`dash-status ${order.status}`}>{orderStatusLabel(t, order.status)}</span></td>
                 </tr>
               ))}
             </tbody>
           </table>
-        ) : <div className="dash-empty">When a customer places a cash-on-delivery order, it will land here.</div>}
+          </div>
+        ) : <div className="dash-empty">{t.ordersEmpty}</div>}
       </section>
     </>
   );

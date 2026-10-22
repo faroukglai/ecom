@@ -1,10 +1,12 @@
 import { Suspense } from "react";
 import { DashboardShell } from "@/components/dashboard/shell";
 import { requireAdmin } from "@/lib/auth";
+import { getDashCopy } from "@/lib/dashboard-lang";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const { t } = await getDashCopy();
   return (
-    <Suspense fallback={<div className="dash-body"><div className="dash-main">Loading dashboard…</div></div>}>
+    <Suspense fallback={<div className="dash-body"><div className="dash-main">{t.loadingDashboard}</div></div>}>
       <AdminShell>{children}</AdminShell>
     </Suspense>
   );

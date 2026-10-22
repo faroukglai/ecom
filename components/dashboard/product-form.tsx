@@ -1,6 +1,8 @@
 "use client";
 
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { duplicateProduct, saveProduct } from "@/app/actions/catalog";
+import { useDashLocale } from "@/components/dashboard/locale";
 
 type Category = { id: string; name: string };
 type ProductRow = {
@@ -19,105 +21,129 @@ type ProductRow = {
   page_title?: string;
   meta_description?: string;
   is_new?: boolean;
-  visibility?: string;
-  publish_date?: string | null;
 };
 
 export function ProductForm({ product, categories }: { product?: ProductRow; categories: Category[] }) {
-  const gallery = (product?.gallery ?? []).filter((src) => src && src !== product?.image).join("\n");
-  const preview = product?.image || "/images/cushion.webp";
+  const { t } = useDashLocale();
+  const existingGallery = (product?.gallery ?? []).filter((src) => src && src !== product?.image);
+  const [mainPreview, setMainPreview] = useState(product?.image ?? "");
+  const [galleryKeep, setGalleryKeep] = useState(existingGallery);
+  const [galleryNew, setGalleryNew] = useState<string[]>([]);
+  const [state, action, pending] = useActionState(saveProduct, undefined);
+
+  const objectUrls = useMemo(() => [mainPreview, ...galleryNew].filter((src) => src.startsWith("blob:")), [galleryNew, mainPreview]);
+  useEffect(() => () => objectUrls.forEach((src) => URL.revokeObjectURL(src)), [objectUrls]);
+
   return (
     <div>
-    {product?.id ? (
-      <form action={duplicateProduct.bind(null, product.id)} style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
-        <button className="dash-btn ghost" type="submit">Duplicate</button>
-      </form>
-    ) : null}
-    <form action={saveProduct} className="dash-form-layout">
-      {product?.id ? <input type="hidden" name="id" value={product.id}/> : null}
-      <div className="dash-grid">
-        <section className="dash-card">
-          <h2 style={{fontSize:18,marginBottom:18}}>Basic information</h2>
-          <div className="dash-row">
-            <label className="dash-field">Brand name
-              <input name="brand" defaultValue={product?.brand ?? "Hearth & Hue"}/>
+      {product?.id ? (
+        <form action={duplicateProduct.bind(null, product.id)} className="dash-duplicate">
+          <button className="dash-btn ghost" type="submit">{t.duplicate}</button>
+        </form>
+      ) : null}
+      <form action={action} className="dash-form-layout">
+        {product?.id ? <input type="hidden" name="id" value={product.id}/> : null}
+        <input type="hidden" name="image" value={mainPreview.startsWith("blob:") ? (product?.image ?? "") : mainPreview}/>
+        <input type="hidden" name="gallery" value={galleryKeep.join("\n")}/>
+        <div className="dash-grid">
+          <section className="dash-card">
+            <h2 style={{fontSize:18,marginBottom:18}}>{t.basicInfo}</h2>
+            {state?.error ? <p className="dash-login-error" role="alert">{state.error}</p> : null}
+            <div className="dash-row">
+              <label className="dash-field">{t.brandName}
+                <input name="brand" defaultValue={product?.brand ?? "Hearth & Hue"}/>
+              </label>
+              <label className="dash-field">{t.category}
+                <select name="category_id" defaultValue={product?.category_id ?? ""}>
+                  <option value="">{t.selectCategory}</option>
+                  {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
+                </select>
+              </label>
+              <label className="dash-field">{t.priceTnd}
+                <input name="price" type="number" min="0" step="0.01" required defaultValue={product?.price ?? ""} inputMode="decimal"/>
+              </label>
+            </div>
+            <label className="dash-field">{t.productName}
+              <input name="name" required defaultValue={product?.name ?? ""} placeholder="Washed linen cushion"/>
             </label>
-            <label className="dash-field">Category
-              <select name="category_id" defaultValue={product?.category_id ?? ""}>
-                <option value="">Select category</option>
-                {categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}
-              </select>
+            <div className="dash-row-2">
+              <label className="dash-field">{t.slug}
+                <input name="slug" defaultValue={product?.slug ?? ""} placeholder="washed-linen-cushion"/>
+              </label>
+              <label className="dash-field">{t.compareAt}
+                <input name="old_price" type="number" min="0" step="0.01" defaultValue={product?.old_price ?? ""} inputMode="decimal"/>
+              </label>
+            </div>
+            <label className="dash-field">{t.description}
+              <textarea name="description" defaultValue={product?.description ?? ""}/>
             </label>
-            <label className="dash-field">Price (TND)
-              <input name="price" type="number" min="0" step="0.01" required defaultValue={product?.price ?? ""}/>
+            <div className="dash-row-2">
+              <label className="dash-field">{t.color}
+                <input name="color" defaultValue={product?.color ?? ""}/>
+              </label>
+              <label className="dash-field">{t.material}
+                <input name="material" defaultValue={product?.material ?? ""}/>
+              </label>
+            </div>
+            <label className="dash-check"><input type="checkbox" name="is_new" defaultChecked={Boolean(product?.is_new)}/> {t.markNew}</label>
+          </section>
+          <section className="dash-card">
+            <h2 style={{fontSize:18,marginBottom:18}}>{t.searchDetails}</h2>
+            <label className="dash-field">{t.pageTitle}
+              <input name="page_title" defaultValue={product?.page_title ?? ""}/>
             </label>
-          </div>
-          <label className="dash-field">Product name
-            <input name="name" required defaultValue={product?.name ?? ""} placeholder="Washed linen cushion"/>
-          </label>
-          <div className="dash-row-2">
-            <label className="dash-field">Slug
-              <input name="slug" defaultValue={product?.slug ?? ""} placeholder="washed-linen-cushion"/>
+            <label className="dash-field">{t.metaDescription}
+              <textarea name="meta_description" defaultValue={product?.meta_description ?? ""}/>
             </label>
-            <label className="dash-field">Compare-at price
-              <input name="old_price" type="number" min="0" step="0.01" defaultValue={product?.old_price ?? ""}/>
-            </label>
-          </div>
-          <label className="dash-field">Description
-            <textarea name="description" defaultValue={product?.description ?? ""}/>
-          </label>
-          <div className="dash-row-2">
-            <label className="dash-field">Color
-              <input name="color" defaultValue={product?.color ?? ""}/>
-            </label>
-            <label className="dash-field">Material
-              <input name="material" defaultValue={product?.material ?? ""}/>
-            </label>
-          </div>
-        </section>
-        <section className="dash-card">
-          <h2 style={{fontSize:18,marginBottom:18}}>Search details</h2>
-          <label className="dash-field">Page title
-            <input name="page_title" defaultValue={product?.page_title ?? ""} placeholder="Get free delivery, or pick up in store"/>
-          </label>
-          <label className="dash-field">Meta description
-            <textarea name="meta_description" defaultValue={product?.meta_description ?? ""}/>
-          </label>
-        </section>
-      </div>
-      <div className="dash-grid">
-        <section className="dash-card">
-          <h2 style={{fontSize:18,marginBottom:18}}>Visibility</h2>
-          <div className="dash-vis">
-            {[["published","Published"],["scheduled","Schedule"],["hidden","Hidden"]].map(([value, label]) => (
-              <label key={value}><input type="radio" name="visibility" value={value} defaultChecked={(product?.visibility ?? "published") === value}/> {label}</label>
-            ))}
-          </div>
-          <label className="dash-field" style={{marginTop:16}}>Publish date
-            <input type="datetime-local" name="publish_date" defaultValue={product?.publish_date ? product.publish_date.slice(0,16) : ""}/>
-            <small className="dash-help">Hidden or scheduled products stay off the storefront until you publish them.</small>
-          </label>
-          <label className="dash-check"><input type="checkbox" name="is_new" defaultChecked={Boolean(product?.is_new)}/> Mark as new arrival</label>
-        </section>
-        <section className="dash-card">
-          <h2 style={{fontSize:18,marginBottom:18}}>Product image</h2>
-          <label className="dash-field">Main image URL or path
-            <input name="image" required defaultValue={product?.image ?? "/images/cushion.webp"} placeholder="/images/cushion.webp"/>
-          </label>
-          <img className="dash-hero-img" src={preview} alt=""/>
-          <div className="dash-thumbs">
-            {(product?.gallery ?? [preview]).slice(0,2).map((src) => <img key={src} src={src} alt=""/>)}
-          </div>
-          <label className="dash-field">Gallery images
-            <textarea name="gallery" defaultValue={gallery} placeholder={"One image path per line\n/images/hero.webp"}/>
-            <small className="dash-help">Use store files like /images/lamp.webp or a full https image URL.</small>
-          </label>
-        </section>
-        <div className="dash-actions">
-          <button className="dash-btn primary" type="submit">Save</button>
+          </section>
         </div>
-      </div>
-    </form>
+        <aside className="dash-grid">
+          <section className="dash-card">
+            <h2 style={{fontSize:18,marginBottom:18}}>{t.productImages}</h2>
+            <label className="dash-upload">
+              <input
+                type="file"
+                name="image_file"
+                accept="image/*"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  setMainPreview(file ? URL.createObjectURL(file) : (product?.image ?? ""));
+                }}
+              />
+              <strong>{t.uploadMain}</strong>
+              <span>{t.uploadMainHelp}</span>
+            </label>
+            {mainPreview ? <img className="dash-hero-img" src={mainPreview} alt=""/> : <div className="dash-hero-img dash-upload-empty">{t.noPhoto}</div>}
+            <label className="dash-upload" style={{marginTop:14}}>
+              <input
+                type="file"
+                name="gallery_files"
+                accept="image/*"
+                multiple
+                onChange={(event) => {
+                  const files = Array.from(event.target.files ?? []);
+                  setGalleryNew(files.map((file) => URL.createObjectURL(file)));
+                }}
+              />
+              <strong>{t.addMorePhotos}</strong>
+              <span>{t.addMoreHelp}</span>
+            </label>
+            <div className="dash-thumbs">
+              {galleryKeep.map((src) => (
+                <button key={src} className="dash-thumb" type="button" onClick={() => setGalleryKeep((current) => current.filter((item) => item !== src))}>
+                  <img src={src} alt=""/>
+                  <span>{t.remove}</span>
+                </button>
+              ))}
+              {galleryNew.map((src) => <img key={src} src={src} alt=""/>)}
+            </div>
+            <small className="dash-help">{t.imageHelp}</small>
+          </section>
+        </aside>
+        <div className="dash-actions dash-form-save">
+          <button className="dash-btn primary" type="submit" disabled={pending}>{pending ? t.saving : t.saveProduct}</button>
+        </div>
+      </form>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { slugify } from "@/lib/catalog";
+import { uploadProductImages } from "@/lib/storage";
 
 function text(form: FormData, key: string) {
   return String(form.get(key) ?? "").trim();
@@ -14,46 +15,53 @@ function moneyValue(form: FormData, key: string) {
   return Number.isFinite(value) && value >= 0 ? Math.round(value * 100) / 100 : null;
 }
 
-function galleryFrom(form: FormData) {
-  const main = text(form, "image");
-  const extra = text(form, "gallery")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-  return { image: main, gallery: Array.from(new Set([main, ...extra].filter(Boolean))) };
+function lines(value: string) {
+  return value.split("\n").map((line) => line.trim()).filter(Boolean);
 }
 
-export async function saveProduct(formData: FormData) {
-  const { supabase } = await requireAdmin();
-  const currentId = text(formData, "id");
-  const name = text(formData, "name");
-  const slug = slugify(text(formData, "slug") || name);
-  const price = moneyValue(formData, "price");
-  const { image, gallery } = galleryFrom(formData);
-  if (!name || price == null || !image) throw new Error("Name, price and image are required.");
-  const payload = {
-    id: currentId || slug,
-    slug,
-    name,
-    brand: text(formData, "brand") || "Hearth & Hue",
-    category_id: text(formData, "category_id") || null,
-    price,
-    old_price: moneyValue(formData, "old_price"),
-    image,
-    gallery,
-    color: text(formData, "color"),
-    material: text(formData, "material"),
-    description: text(formData, "description"),
-    page_title: text(formData, "page_title") || name,
-    meta_description: text(formData, "meta_description"),
-    is_new: formData.get("is_new") === "on",
-    visibility: text(formData, "visibility") || "published",
-    publish_date: text(formData, "publish_date") || null,
-  };
-  const { error } = currentId
-    ? await supabase.from("products").update(payload).eq("id", currentId)
-    : await supabase.from("products").insert(payload);
-  if (error) throw new Error(error.message);
+export async function saveProduct(_prev: { error?: string } | undefined, formData: FormData) {
+  try {
+    const { supabase } = await requireAdmin();
+    const currentId = text(formData, "id");
+    const name = text(formData, "name");
+    const slug = slugify(text(formData, "slug") || name);
+    const price = moneyValue(formData, "price");
+    if (!name || price == null) return { error: "Name and price are required." };
+
+    const folder = currentId || slug || "products";
+    const uploadedMain = await uploadProductImages(supabase, formData.get("image_file"), folder);
+    const uploadedGallery = await uploadProductImages(supabase, formData.getAll("gallery_files"), folder);
+    const image = uploadedMain[0] || text(formData, "image");
+    if (!image) return { error: "Add a product photo from your phone or computer." };
+
+    const gallery = Array.from(new Set([image, ...lines(text(formData, "gallery")), ...uploadedMain.slice(1), ...uploadedGallery]));
+    const payload = {
+      id: currentId || slug,
+      slug,
+      name,
+      brand: text(formData, "brand") || "Hearth & Hue",
+      category_id: text(formData, "category_id") || null,
+      price,
+      old_price: moneyValue(formData, "old_price"),
+      image,
+      gallery,
+      color: text(formData, "color"),
+      material: text(formData, "material"),
+      description: text(formData, "description"),
+      page_title: text(formData, "page_title") || name,
+      meta_description: text(formData, "meta_description"),
+      is_new: formData.get("is_new") === "on",
+      visibility: "published",
+      publish_date: null,
+    };
+    const { error } = currentId
+      ? await supabase.from("products").update(payload).eq("id", currentId)
+      : await supabase.from("products").insert(payload);
+    if (error) return { error: error.message };
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not save this product." };
+  }
+
   revalidatePath("/");
   revalidatePath("/shop");
   revalidatePath("/dashboard");
@@ -65,7 +73,7 @@ export async function duplicateProduct(id: string) {
   const { supabase } = await requireAdmin();
   const { data, error } = await supabase.from("products").select("*").eq("id", id).single();
   if (error || !data) throw new Error(error?.message ?? "Product not found.");
-  const copyId = `${data.id}-copy-${Date.now().toString(36)}`;
+  const copyId = `${data.id}-copy-${crypto.randomUUID().slice(0, 8)}`;
   const { created_at: _created, updated_at: _updated, ...rest } = data;
   const { error: insertError } = await supabase.from("products").insert({
     ...rest,
