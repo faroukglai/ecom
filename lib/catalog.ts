@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { categories as seedCategories, products as seedProducts, slugify } from "@/data/catalog";
 import { createClient } from "@/lib/supabase/server";
 import type { Catalog, Category, Product } from "@/lib/types";
@@ -24,6 +25,7 @@ const fallback: Catalog = {
 
 export async function getStoreCatalog(): Promise<Catalog> {
   try {
+    await connection();
     const supabase = await createClient();
     const [{ data: categoryRows, error: categoryError }, { data: productRows, error: productError }] = await Promise.all([
       supabase.from("categories").select("*").eq("visible", true).order("sort_order"),

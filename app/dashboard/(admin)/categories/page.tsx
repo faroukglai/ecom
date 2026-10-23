@@ -1,8 +1,17 @@
 import { deleteCategory, saveCategory } from "@/app/actions/catalog";
+import { DashPage } from "@/components/dashboard/runtime";
 import { requireAdmin } from "@/lib/auth";
 import { getDashCopy } from "@/lib/dashboard-lang";
 
-export default async function CategoriesPage() {
+export default function CategoriesPage() {
+  return (
+    <DashPage>
+      <CategoriesBody/>
+    </DashPage>
+  );
+}
+
+async function CategoriesBody() {
   const { t } = await getDashCopy();
   const { supabase } = await requireAdmin();
   const { data } = await supabase.from("categories").select("*").order("sort_order");

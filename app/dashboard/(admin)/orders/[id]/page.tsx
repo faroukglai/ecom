@@ -1,12 +1,21 @@
 import { notFound } from "next/navigation";
 import { updateOrderStatus } from "@/app/actions/catalog";
+import { DashPage } from "@/components/dashboard/runtime";
 import { requireAdmin } from "@/lib/auth";
 import { dashMoney, orderStatusLabel } from "@/lib/dashboard-i18n";
 import { getDashCopy } from "@/lib/dashboard-lang";
 
 const statuses = ["new", "confirmed", "shipped", "delivered", "cancelled"] as const;
 
-export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <DashPage>
+      <OrderBody params={params}/>
+    </DashPage>
+  );
+}
+
+async function OrderBody({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { lang, t } = await getDashCopy();
   const { supabase } = await requireAdmin();

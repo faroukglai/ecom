@@ -5,10 +5,9 @@ import { requireAdmin } from "@/lib/auth";
 import { dashMoney, fill, orderStatusLabel } from "@/lib/dashboard-i18n";
 import { getDashCopy } from "@/lib/dashboard-lang";
 
-export default async function DashboardHome() {
-  const { t } = await getDashCopy();
+export default function DashboardHome() {
   return (
-    <Suspense fallback={<p>{t.loadingAnalytics}</p>}>
+    <Suspense fallback={<p className="dash-empty">Loading…</p>}>
       <Analytics/>
     </Suspense>
   );

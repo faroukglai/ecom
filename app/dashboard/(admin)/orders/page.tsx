@@ -1,9 +1,18 @@
 import Link from "next/link";
+import { DashPage } from "@/components/dashboard/runtime";
 import { requireAdmin } from "@/lib/auth";
 import { dashMoney, orderStatusLabel } from "@/lib/dashboard-i18n";
 import { getDashCopy } from "@/lib/dashboard-lang";
 
-export default async function OrdersPage() {
+export default function OrdersPage() {
+  return (
+    <DashPage>
+      <OrdersBody/>
+    </DashPage>
+  );
+}
+
+async function OrdersBody() {
   const { lang, t } = await getDashCopy();
   const { supabase } = await requireAdmin();
   const { data } = await supabase.from("orders").select("*").order("created_at", { ascending: false });

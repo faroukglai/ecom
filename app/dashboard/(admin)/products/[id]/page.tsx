@@ -1,10 +1,19 @@
 import { notFound } from "next/navigation";
 import { ProductForm } from "@/components/dashboard/product-form";
+import { DashPage } from "@/components/dashboard/runtime";
 import { deleteProduct } from "@/app/actions/catalog";
 import { requireAdmin } from "@/lib/auth";
 import { getDashCopy } from "@/lib/dashboard-lang";
 
-export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+export default function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <DashPage>
+      <EditProductBody params={params}/>
+    </DashPage>
+  );
+}
+
+async function EditProductBody({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { t } = await getDashCopy();
   const { supabase } = await requireAdmin();

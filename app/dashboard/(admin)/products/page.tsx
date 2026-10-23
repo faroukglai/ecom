@@ -1,9 +1,18 @@
 import Link from "next/link";
+import { DashPage } from "@/components/dashboard/runtime";
 import { requireAdmin } from "@/lib/auth";
 import { dashMoney, visibilityLabel } from "@/lib/dashboard-i18n";
 import { getDashCopy } from "@/lib/dashboard-lang";
 
-export default async function ProductsPage() {
+export default function ProductsPage() {
+  return (
+    <DashPage>
+      <ProductsBody/>
+    </DashPage>
+  );
+}
+
+async function ProductsBody() {
   const { lang, t } = await getDashCopy();
   const { supabase } = await requireAdmin();
   const { data } = await supabase.from("products").select("id, name, image, price, visibility, categories(name)").order("created_at", { ascending: false });
