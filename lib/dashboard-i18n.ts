@@ -2,7 +2,7 @@ export type DashLang = "en" | "ar";
 
 export const dashCopy = {
   en: {
-    storeName: "Hearth & Hue",
+    storeName: "Darivo",
     storeOwner: "Store owner",
     navDashboard: "Dashboard",
     navOrders: "Orders",
@@ -123,7 +123,7 @@ export const dashCopy = {
     visHidden: "Hidden",
   },
   ar: {
-    storeName: "Hearth & Hue",
+    storeName: "Darivo",
     storeOwner: "صاحب المتجر",
     navDashboard: "لوحة التحكم",
     navOrders: "الطلبات",

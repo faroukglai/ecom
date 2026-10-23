@@ -9,4 +9,4 @@ export const useShop = create<ShopState>()(persist((set) => ({
   update: (id, quantity) => set(state => ({ lines: quantity <= 0 ? state.lines.filter(l => l.id !== id) : state.lines.map(l => l.id === id ? {...l, quantity: Math.min(20,quantity)} : l) })),
   toggleWish: id => set(state => ({ wishlist: state.wishlist.includes(id) ? state.wishlist.filter(i => i !== id) : [...state.wishlist, id] })),
   clear: () => set({ lines: [] }),
-}), { name: "hearth-and-hue-shop", skipHydration: true }));
+}), { name: "darivo-shop", skipHydration: true }));

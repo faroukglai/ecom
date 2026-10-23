@@ -39,7 +39,7 @@ export async function saveProduct(_prev: { error?: string } | undefined, formDat
       id: currentId || slug,
       slug,
       name,
-      brand: text(formData, "brand") || "Hearth & Hue",
+      brand: text(formData, "brand") || "Darivo",
       category_id: text(formData, "category_id") || null,
       price,
       old_price: moneyValue(formData, "old_price"),

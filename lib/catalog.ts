@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { site } from "@/config/site";
 import { categories as seedCategories, products as seedProducts, slugify } from "@/data/catalog";
 import { createClient } from "@/lib/supabase/server";
 import type { Catalog, Category, Product } from "@/lib/types";
@@ -18,7 +19,7 @@ const fallback: Catalog = {
   products: seedProducts.map((product) => ({
     ...product,
     categoryId: slugify(product.category),
-    brand: "Hearth & Hue",
+    brand: site.name,
     gallery: [product.image],
   })),
 };
@@ -51,7 +52,7 @@ export async function getStoreCatalog(): Promise<Catalog> {
           id: row.id,
           slug: row.slug,
           name: row.name,
-          brand: row.brand ?? "Hearth & Hue",
+          brand: row.brand ?? site.name,
           category: joined?.name ?? "Collection",
           categoryId: row.category_id,
           price: Number(row.price),

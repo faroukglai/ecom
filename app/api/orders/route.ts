@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Delivery could not be calculated." }, { status: 400 });
     }
 
-    const orderNumber = `HH-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${randomUUID().slice(0, 8).toUpperCase()}`;
+    const orderNumber = `DR-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${randomUUID().slice(0, 8).toUpperCase()}`;
     const supabase = await createClient();
     const { data: order, error } = await supabase
       .from("orders")

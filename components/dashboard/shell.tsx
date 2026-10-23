@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutDashboard, Package, ShoppingBag, Layers3, Plus, LogOut, List, Menu, X } from "lucide-react";
 import { logout } from "@/app/actions/auth";
+import { BrandLogo } from "@/components/brand-logo";
 import { LangSwitch, useDashLocale } from "@/components/dashboard/locale";
 
 export function DashboardShell({ email, children }: { email: string; children: React.ReactNode }) {
@@ -26,14 +27,14 @@ export function DashboardShell({ email, children }: { email: string; children: R
     <div className="dash-body">
       <header className="dash-mobile-bar">
         <button type="button" className="dash-icon-btn" aria-label={t.openMenu} onClick={() => setMenuOpen(true)}><Menu size={20}/></button>
-        <strong>{t.storeName}</strong>
+        <strong className="dash-mobile-brand"><BrandLogo size={28}/> {t.storeName}</strong>
         <Link className="dash-icon-btn" href="/dashboard/products/new" aria-label={t.addProduct}><Plus size={20}/></Link>
       </header>
       {menuOpen ? <button type="button" className="dash-nav-overlay" aria-label={t.closeMenu} onClick={() => setMenuOpen(false)}/> : null}
       <div className="dash-shell">
         <aside className={`dash-sidebar${menuOpen ? " open" : ""}`}>
           <div className="dash-user">
-            <span className="dash-avatar">FG</span>
+            <BrandLogo size={42}/>
             <span>
               <strong>Farouk Glai</strong>
               <small>{t.storeOwner}</small>

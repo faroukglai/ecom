@@ -17,11 +17,13 @@
 .dash-login-card button[type=submit]{width:100%;height:48px;border-radius:2px;background:#111827;color:#fff;font-weight:600;margin-top:8px}
 .dash-login-card button[type=submit]:hover{background:#000}
 .dash-login-error{background:#fef2f2;color:#b91c1c;border-radius:2px;padding:10px 12px;font-size:13px;margin-bottom:16px}
-.dash-brand-chip{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:#143f32;background:#e8f0ea;padding:6px 10px;border-radius:2px}
+.dash-brand-chip{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:#143f32;background:#e8f0ea;padding:4px 10px 4px 4px;border-radius:6px}
+.dash-brand-chip .brand-logo,.dash-mobile-brand .brand-logo,.dash-user .brand-logo{border-radius:6px;object-fit:cover;background:#000;flex-shrink:0}
+.dash-mobile-brand{display:inline-flex;align-items:center;gap:8px}
 .dash-shell{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
 .dash-sidebar{background:#fff;border-inline-end:1px solid #eceff3;padding:22px 16px;display:flex;flex-direction:column}
 .dash-user{display:flex;gap:12px;align-items:center;padding:8px 10px 22px;position:relative}
-.dash-user img,.dash-avatar{width:42px;height:42px;border-radius:50%;object-fit:cover;background:#143f32;color:#fff;display:grid;place-items:center;font-weight:700}
+.dash-user img,.dash-avatar{width:42px;height:42px;border-radius:6px;object-fit:cover;background:#000;color:#fff;display:grid;place-items:center;font-weight:700}
 .dash-user strong{display:block;font-size:14px}
 .dash-user small{color:#9ca3af;font-size:12px}
 .dash-nav{display:flex;flex-direction:column;gap:4px;flex:1}

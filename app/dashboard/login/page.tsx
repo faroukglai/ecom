@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLogo } from "@/components/brand-logo";
 import { LoginForm } from "@/components/dashboard/login-form";
 import { LangSwitch, useDashLocale } from "@/components/dashboard/locale";
 
@@ -9,7 +10,7 @@ export default function LoginPage() {
     <div className="dash-login">
       <div className="dash-login-card">
         <div className="dash-login-head">
-          <span className="dash-brand-chip">{t.storeName}</span>
+          <span className="dash-brand-chip"><BrandLogo size={28}/> {t.storeName}</span>
           <LangSwitch/>
         </div>
         <h1>{t.loginTitle}</h1>

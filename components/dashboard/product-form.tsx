@@ -51,7 +51,7 @@ export function ProductForm({ product, categories }: { product?: ProductRow; cat
             {state?.error ? <p className="dash-login-error" role="alert">{state.error}</p> : null}
             <div className="dash-row">
               <label className="dash-field">{t.brandName}
-                <input name="brand" defaultValue={product?.brand ?? "Hearth & Hue"}/>
+                <input name="brand" defaultValue={product?.brand ?? "Darivo"}/>
               </label>
               <label className="dash-field">{t.category}
                 <select name="category_id" defaultValue={product?.category_id ?? ""}>
