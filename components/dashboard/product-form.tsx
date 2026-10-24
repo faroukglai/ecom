@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { duplicateProduct, saveProduct } from "@/app/actions/catalog";
+import { ProductImages, type ProductMediaItem } from "@/components/dashboard/product-images";
 import { useDashLocale } from "@/components/dashboard/locale";
 
 type Category = { id: string; name: string };
@@ -23,16 +24,36 @@ type ProductRow = {
   is_new?: boolean;
 };
 
+function initialImages(product?: ProductRow): ProductMediaItem[] {
+  const urls = [product?.image, ...(product?.gallery ?? [])].filter((src): src is string => Boolean(src));
+  return [...new Set(urls)].map((src) => ({ id: src, src, remote: src }));
+}
+
 export function ProductForm({ product, categories }: { product?: ProductRow; categories: Category[] }) {
   const { t } = useDashLocale();
-  const existingGallery = (product?.gallery ?? []).filter((src) => src && src !== product?.image);
-  const [mainPreview, setMainPreview] = useState(product?.image ?? "");
-  const [galleryKeep, setGalleryKeep] = useState(existingGallery);
-  const [galleryNew, setGalleryNew] = useState<string[]>([]);
+  const [images, setImages] = useState<ProductMediaItem[]>(() => initialImages(product));
   const [state, action, pending] = useActionState(saveProduct, undefined);
+  const imagesRef = useRef(images);
+  imagesRef.current = images;
+  useEffect(() => () => {
+    imagesRef.current.forEach((image) => {
+      if (image.src.startsWith("blob:")) URL.revokeObjectURL(image.src);
+    });
+  }, []);
 
-  const objectUrls = useMemo(() => [mainPreview, ...galleryNew].filter((src) => src.startsWith("blob:")), [galleryNew, mainPreview]);
-  useEffect(() => () => objectUrls.forEach((src) => URL.revokeObjectURL(src)), [objectUrls]);
+  function submit(formData: FormData) {
+    formData.delete("image_files");
+    formData.delete("image_list");
+    const plan = images.map((image) => {
+      if (image.file) {
+        formData.append("image_files", image.file);
+        return { kind: "file" };
+      }
+      return { kind: "url", src: image.remote || image.src };
+    });
+    formData.set("image_list", JSON.stringify(plan));
+    action(formData);
+  }
 
   return (
     <div>
@@ -41,10 +62,8 @@ export function ProductForm({ product, categories }: { product?: ProductRow; cat
           <button className="dash-btn ghost" type="submit">{t.duplicate}</button>
         </form>
       ) : null}
-      <form action={action} className="dash-form-layout">
+      <form action={submit} className="dash-form-layout">
         {product?.id ? <input type="hidden" name="id" value={product.id}/> : null}
-        <input type="hidden" name="image" value={mainPreview.startsWith("blob:") ? (product?.image ?? "") : mainPreview}/>
-        <input type="hidden" name="gallery" value={galleryKeep.join("\n")}/>
         <div className="dash-grid">
           <section className="dash-card">
             <h2 style={{fontSize:18,marginBottom:18}}>{t.basicInfo}</h2>
@@ -87,59 +106,19 @@ export function ProductForm({ product, categories }: { product?: ProductRow; cat
             </div>
             <label className="dash-check"><input type="checkbox" name="is_new" defaultChecked={Boolean(product?.is_new)}/> {t.markNew}</label>
           </section>
-          <section className="dash-card">
-            <h2 style={{fontSize:18,marginBottom:18}}>{t.searchDetails}</h2>
-            <label className="dash-field">{t.pageTitle}
-              <input name="page_title" defaultValue={product?.page_title ?? ""}/>
-            </label>
-            <label className="dash-field">{t.metaDescription}
-              <textarea name="meta_description" defaultValue={product?.meta_description ?? ""}/>
-            </label>
-          </section>
         </div>
         <aside className="dash-grid">
-          <section className="dash-card">
-            <h2 style={{fontSize:18,marginBottom:18}}>{t.productImages}</h2>
-            <label className="dash-upload">
-              <input
-                type="file"
-                name="image_file"
-                accept="image/*"
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  setMainPreview(file ? URL.createObjectURL(file) : (product?.image ?? ""));
-                }}
-              />
-              <strong>{t.uploadMain}</strong>
-              <span>{t.uploadMainHelp}</span>
-            </label>
-            {mainPreview ? <img className="dash-hero-img" src={mainPreview} alt=""/> : <div className="dash-hero-img dash-upload-empty">{t.noPhoto}</div>}
-            <label className="dash-upload" style={{marginTop:14}}>
-              <input
-                type="file"
-                name="gallery_files"
-                accept="image/*"
-                multiple
-                onChange={(event) => {
-                  const files = Array.from(event.target.files ?? []);
-                  setGalleryNew(files.map((file) => URL.createObjectURL(file)));
-                }}
-              />
-              <strong>{t.addMorePhotos}</strong>
-              <span>{t.addMoreHelp}</span>
-            </label>
-            <div className="dash-thumbs">
-              {galleryKeep.map((src) => (
-                <button key={src} className="dash-thumb" type="button" onClick={() => setGalleryKeep((current) => current.filter((item) => item !== src))}>
-                  <img src={src} alt=""/>
-                  <span>{t.remove}</span>
-                </button>
-              ))}
-              {galleryNew.map((src) => <img key={src} src={src} alt=""/>)}
-            </div>
-            <small className="dash-help">{t.imageHelp}</small>
-          </section>
+          <ProductImages images={images} onChange={setImages}/>
         </aside>
+        <section className="dash-card dash-form-seo">
+          <h2 style={{fontSize:18,marginBottom:18}}>{t.searchDetails}</h2>
+          <label className="dash-field">{t.pageTitle}
+            <input name="page_title" defaultValue={product?.page_title ?? ""}/>
+          </label>
+          <label className="dash-field">{t.metaDescription}
+            <textarea name="meta_description" defaultValue={product?.meta_description ?? ""}/>
+          </label>
+        </section>
         <div className="dash-actions dash-form-save">
           <button className="dash-btn primary" type="submit" disabled={pending}>{pending ? t.saving : t.saveProduct}</button>
         </div>

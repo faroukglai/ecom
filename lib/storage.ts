@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const PRODUCT_IMAGE_BUCKET = "product-images";
-const MAX_BYTES = 8 * 1024 * 1024;
+export const PRODUCT_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
+const MAX_BYTES = PRODUCT_IMAGE_MAX_BYTES;
 
 function filesFrom(value: FormDataEntryValue | FormDataEntryValue[] | null) {
   const list = Array.isArray(value) ? value : value ? [value] : [];
@@ -32,4 +33,22 @@ export async function uploadProductImages(supabase: SupabaseClient, incoming: Fo
     uploaded.push(supabase.storage.from(PRODUCT_IMAGE_BUCKET).getPublicUrl(path).data.publicUrl);
   }
   return uploaded;
+}
+
+export function storagePathFromPublicUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    const marker = `/storage/v1/object/public/${PRODUCT_IMAGE_BUCKET}/`;
+    const index = parsed.pathname.indexOf(marker);
+    if (index === -1) return null;
+    return decodeURIComponent(parsed.pathname.slice(index + marker.length));
+  } catch {
+    return null;
+  }
+}
+
+export async function removeProductImages(supabase: SupabaseClient, urls: string[]) {
+  const paths = [...new Set(urls.map(storagePathFromPublicUrl).filter((path): path is string => Boolean(path)))];
+  if (!paths.length) return;
+  await supabase.storage.from(PRODUCT_IMAGE_BUCKET).remove(paths);
 }

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/auth";
 import { slugify } from "@/lib/catalog";
-import { uploadProductImages } from "@/lib/storage";
+import { removeProductImages, uploadProductImages } from "@/lib/storage";
 
 function text(form: FormData, key: string) {
   return String(form.get(key) ?? "").trim();
@@ -15,8 +15,27 @@ function moneyValue(form: FormData, key: string) {
   return Number.isFinite(value) && value >= 0 ? Math.round(value * 100) / 100 : null;
 }
 
-function lines(value: string) {
-  return value.split("\n").map((line) => line.trim()).filter(Boolean);
+type ImagePlanItem = { kind: "url"; src: string } | { kind: "file" };
+
+function parseImagePlan(form: FormData): ImagePlanItem[] {
+  try {
+    const parsed = JSON.parse(text(form, "image_list") || "[]") as unknown;
+    if (!Array.isArray(parsed)) return [];
+    const plan: ImagePlanItem[] = [];
+    for (const item of parsed) {
+      if (!item || typeof item !== "object") continue;
+      const kind = "kind" in item ? String((item as { kind?: string }).kind) : "";
+      if (kind === "url") {
+        const src = "src" in item ? String((item as { src?: string }).src) : "";
+        if (src.startsWith("http://") || src.startsWith("https://")) plan.push({ kind: "url", src });
+        continue;
+      }
+      if (kind === "file") plan.push({ kind: "file" });
+    }
+    return plan;
+  } catch {
+    return [];
+  }
 }
 
 export async function saveProduct(_prev: { error?: string } | undefined, formData: FormData) {
@@ -29,12 +48,31 @@ export async function saveProduct(_prev: { error?: string } | undefined, formDat
     if (!name || price == null) return { error: "Name and price are required." };
 
     const folder = currentId || slug || "products";
-    const uploadedMain = await uploadProductImages(supabase, formData.get("image_file"), folder);
-    const uploadedGallery = await uploadProductImages(supabase, formData.getAll("gallery_files"), folder);
-    const image = uploadedMain[0] || text(formData, "image");
+    const plan = parseImagePlan(formData);
+    const files = formData.getAll("image_files");
+    let fileIndex = 0;
+    const urls: string[] = [];
+    for (const item of plan) {
+      if (item.kind === "url") {
+        urls.push(item.src);
+        continue;
+      }
+      const uploaded = await uploadProductImages(supabase, files[fileIndex++] ?? null, folder);
+      if (uploaded[0]) urls.push(uploaded[0]);
+    }
+    const image = urls[0];
     if (!image) return { error: "Add a product photo from your phone or computer." };
+    const gallery = [...new Set(urls)];
 
-    const gallery = Array.from(new Set([image, ...lines(text(formData, "gallery")), ...uploadedMain.slice(1), ...uploadedGallery]));
+    if (currentId) {
+      const { data: previous } = await supabase.from("products").select("image, gallery").eq("id", currentId).maybeSingle();
+      const previousUrls = [previous?.image, ...(Array.isArray(previous?.gallery) ? previous.gallery : [])].filter((src): src is string => typeof src === "string" && src.length > 0);
+      try {
+        await removeProductImages(supabase, previousUrls.filter((src) => !gallery.includes(src)));
+      } catch {
+        // Keep the product save even if a leftover file cannot be removed.
+      }
+    }
     const payload = {
       id: currentId || slug,
       slug,
@@ -89,6 +127,13 @@ export async function duplicateProduct(id: string) {
 
 export async function deleteProduct(id: string) {
   const { supabase } = await requireAdmin();
+  const { data } = await supabase.from("products").select("image, gallery").eq("id", id).maybeSingle();
+  const urls = [data?.image, ...(Array.isArray(data?.gallery) ? data.gallery : [])].filter((src): src is string => typeof src === "string" && src.length > 0);
+  try {
+    await removeProductImages(supabase, urls);
+  } catch {
+    // Product rows should still be removed if storage cleanup fails.
+  }
   const { error } = await supabase.from("products").delete().eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath("/");

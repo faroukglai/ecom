@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
+import { DeleteProductButton } from "@/components/dashboard/delete-product-button";
 import { ProductForm } from "@/components/dashboard/product-form";
 import { DashPage } from "@/components/dashboard/runtime";
-import { deleteProduct } from "@/app/actions/catalog";
 import { requireAdmin } from "@/lib/auth";
 import { getDashCopy } from "@/lib/dashboard-lang";
 
@@ -29,9 +29,7 @@ async function EditProductBody({ params }: { params: Promise<{ id: string }> }) 
           <div className="dash-crumb">{t.editProductCrumb}</div>
           <h1>{t.editProductTitle}</h1>
         </div>
-        <form action={async () => { "use server"; await deleteProduct(id); }}>
-          <button className="dash-btn danger" type="submit">{t.delete}</button>
-        </form>
+        <DeleteProductButton id={id} label={t.delete} confirmLabel={t.deleteProductConfirm}/>
       </div>
       <ProductForm product={product} categories={categories ?? []}/>
     </>
