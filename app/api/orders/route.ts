@@ -1,94 +1,60 @@
-import { randomUUID } from "node:crypto";
-import { site } from "@/config/site";
-import { getStoreCatalog } from "@/lib/catalog";
-import { totals, type CartLine } from "@/lib/pricing";
 import { createClient } from "@/lib/supabase/server";
 
+const bad = (error: string) => Response.json({ error }, { status: 400 });
+
+// Pricing, coupon rules and the order insert all happen inside the database function
+// public.place_order (see supabase/migrations/20261110120000_*), in one transaction.
+// This route only checks the request shape and forwards it.
 export async function POST(request: Request) {
   try {
     const body: unknown = await request.json();
-    if (!body || typeof body !== "object") return Response.json({ error: "Invalid order." }, { status: 400 });
+    if (!body || typeof body !== "object") return bad("Invalid order.");
     const data = body as Record<string, unknown>;
-    if (!Array.isArray(data.lines) || !data.lines.length || data.lines.length > 30) {
-      return Response.json({ error: "Your cart needs at least one item." }, { status: 400 });
-    }
 
-    const { products } = await getStoreCatalog();
-    const lines: CartLine[] = [];
+    if (!Array.isArray(data.lines) || !data.lines.length || data.lines.length > 30) return bad("Your cart needs at least one item.");
+    const lines: { id: string; quantity: number }[] = [];
     for (const value of data.lines) {
-      if (!value || typeof value !== "object") return Response.json({ error: "Invalid item." }, { status: 400 });
-      const line = value as Record<string, unknown>;
-      if (
-        typeof line.id !== "string" ||
-        !products.some((product) => product.id === line.id) ||
-        typeof line.quantity !== "number" ||
-        !Number.isInteger(line.quantity) ||
-        line.quantity < 1 ||
-        line.quantity > 20 ||
-        lines.some((existing) => existing.id === line.id)
-      ) {
-        return Response.json({ error: "Please check your cart quantities." }, { status: 400 });
+      const line = value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+      if (!line || typeof line.id !== "string" || typeof line.quantity !== "number" || !Number.isInteger(line.quantity)) {
+        return bad("Please check your cart quantities.");
       }
       lines.push({ id: line.id, quantity: line.quantity });
     }
 
-    if (!data.customer || typeof data.customer !== "object") {
-      return Response.json({ error: "Please fill in your contact details." }, { status: 400 });
-    }
-    const customer = data.customer as Record<string, unknown>;
-    const name = typeof customer.name === "string" ? customer.name.trim() : "";
-    const phone = typeof customer.phone === "string" ? customer.phone.trim() : "";
-    const location = typeof customer.location === "string" ? customer.location.trim() : "";
-    if (name.length < 2 || name.length > 120) return Response.json({ error: "Please enter your name." }, { status: 400 });
-    if (!/^[+0-9 ()-]{8,20}$/.test(phone)) return Response.json({ error: "Please enter a valid phone number." }, { status: 400 });
-    if (location.length < 4 || location.length > 400) return Response.json({ error: "Please enter your location." }, { status: 400 });
+    const customer = data.customer && typeof data.customer === "object" ? (data.customer as Record<string, unknown>) : null;
+    if (!customer) return bad("Please fill in your contact details.");
+    const str = (value: unknown) => (typeof value === "string" ? value : "");
+    // Coupons were removed from the storefront; the database function still accepts the argument.
+    const coupon = "";
 
-    const coupon = typeof data.coupon === "string" ? data.coupon.toUpperCase() : "";
-    if (coupon && !["WELCOME10", "HOME15", "FREESHIP"].includes(coupon)) {
-      return Response.json({ error: "That discount code is not valid." }, { status: 400 });
-    }
-    const pricing = totals(lines, products, coupon);
-    if (coupon === "HOME15" && pricing.subtotal < 200) {
-      return Response.json({ error: "HOME15 needs a subtotal of 200 TND." }, { status: 400 });
-    }
-    if (pricing.shipping !== site.shipping) {
-      return Response.json({ error: "Delivery could not be calculated." }, { status: 400 });
-    }
-
-    const orderNumber = `DR-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${randomUUID().slice(0, 8).toUpperCase()}`;
     const supabase = await createClient();
-    const { data: order, error } = await supabase
-      .from("orders")
-      .insert({
-        order_number: orderNumber,
-        customer_name: name,
-        phone,
-        location,
-        subtotal: pricing.subtotal - pricing.discount,
-        shipping: pricing.shipping,
-        total: pricing.total,
-        status: "new",
-        payment_method: "cod",
-      })
-      .select("id, order_number")
-      .single();
-    if (error || !order) return Response.json({ error: "We couldn’t save this order. Please try again." }, { status: 500 });
-
-    const items = lines.map((line) => {
-      const product = products.find((entry) => entry.id === line.id)!;
-      return {
-        order_id: order.id,
-        product_id: product.id,
-        product_name: product.name,
-        product_image: product.image,
-        quantity: line.quantity,
-        unit_price: product.price,
-      };
+    const { data: rows, error } = await supabase.rpc("place_order", {
+      p_name: str(customer.name),
+      p_phone: str(customer.phone),
+      p_location: str(customer.location),
+      p_lines: lines,
+      p_coupon: coupon,
     });
-    const { error: itemError } = await supabase.from("order_items").insert(items);
-    if (itemError) return Response.json({ error: "We couldn’t save this order. Please try again." }, { status: 500 });
 
-    return Response.json({ orderNumber: order.order_number, ...pricing, status: "new" }, { status: 201 });
+    if (error) {
+      // 22023 = validation failure raised by place_order; the message is safe to show.
+      if (error.code === "22023") return bad(error.message);
+      return Response.json({ error: "We couldn’t save this order. Please try again." }, { status: 500 });
+    }
+    const order = Array.isArray(rows) ? rows[0] : rows;
+    if (!order) return Response.json({ error: "We couldn’t save this order. Please try again." }, { status: 500 });
+
+    return Response.json(
+      {
+        orderNumber: order.order_number,
+        subtotal: Number(order.subtotal),
+        discount: Number(order.discount),
+        shipping: Number(order.shipping),
+        total: Number(order.total),
+        status: "new",
+      },
+      { status: 201 },
+    );
   } catch {
     return Response.json({ error: "We couldn’t save this order. Please try again." }, { status: 500 });
   }

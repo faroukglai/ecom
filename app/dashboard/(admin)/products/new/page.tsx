@@ -1,5 +1,6 @@
 import { ProductForm } from "@/components/dashboard/product-form";
 import { DashPage } from "@/components/dashboard/runtime";
+import { PageHeader } from "@/components/dashboard/ui";
 import { requireAdmin } from "@/lib/auth";
 import { getDashCopy } from "@/lib/dashboard-lang";
 
@@ -17,12 +18,7 @@ async function NewProductBody() {
   const { data } = await supabase.from("categories").select("id, name").order("sort_order");
   return (
     <>
-      <div className="dash-topbar">
-        <div>
-          <div className="dash-crumb">{t.newProductCrumb}</div>
-          <h1>{t.newProductTitle}</h1>
-        </div>
-      </div>
+      <PageHeader title={t.newProductTitle} crumbs={[{ label: t.navProducts, href: "/dashboard/products" }, { label: t.newProductTitle }]}/>
       <ProductForm categories={data ?? []}/>
     </>
   );

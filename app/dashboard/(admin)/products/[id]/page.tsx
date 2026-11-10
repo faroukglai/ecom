@@ -1,7 +1,10 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DeleteProductButton } from "@/components/dashboard/delete-product-button";
+import { Icon } from "@/components/dashboard/icons";
 import { ProductForm } from "@/components/dashboard/product-form";
 import { DashPage } from "@/components/dashboard/runtime";
+import { PageHeader } from "@/components/dashboard/ui";
 import { requireAdmin } from "@/lib/auth";
 import { getDashCopy } from "@/lib/dashboard-lang";
 
@@ -24,13 +27,10 @@ async function EditProductBody({ params }: { params: Promise<{ id: string }> }) 
   if (!product) notFound();
   return (
     <>
-      <div className="dash-topbar">
-        <div>
-          <div className="dash-crumb">{t.editProductCrumb}</div>
-          <h1>{t.editProductTitle}</h1>
-        </div>
+      <PageHeader title={String(product.name)} crumbs={[{ label: t.navProducts, href: "/dashboard/products" }, { label: t.editProductTitle }]}>
+        <Link className="dash-btn ghost" href={`/products/${product.slug}`} target="_blank"><Icon name="view" size={17}/> {t.viewOnStore}</Link>
         <DeleteProductButton id={id} label={t.delete} confirmLabel={t.deleteProductConfirm}/>
-      </div>
+      </PageHeader>
       <ProductForm product={product} categories={categories ?? []}/>
     </>
   );

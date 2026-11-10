@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   partialPrefetching: true,
   images: {
+    // Product photos rarely change; let the optimizer keep resized copies for 30 days so phones get them instantly.
+    minimumCacheTTL: 60 * 60 * 24 * 30,
     remotePatterns: [
       { protocol: "https", hostname: "eocdleitnihglspprcsr.supabase.co" },
     ],

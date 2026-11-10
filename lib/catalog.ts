@@ -1,75 +1,75 @@
-import { connection } from "next/server";
+import { cacheLife, cacheTag } from "next/cache";
+import { createClient as createPublicClient } from "@supabase/supabase-js";
 import { site } from "@/config/site";
-import { categories as seedCategories, products as seedProducts, slugify } from "@/data/catalog";
 import { createClient } from "@/lib/supabase/server";
 import type { Catalog, Category, Product } from "@/lib/types";
 
-export { slugify };
+export function slugify(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
-const fallback: Catalog = {
-  categories: seedCategories.map((name, index) => ({
-    id: slugify(name),
-    name,
-    slug: slugify(name),
-    description: "",
-    parentId: null,
-    visible: true,
-    sortOrder: index + 1,
-  })),
-  products: seedProducts.map((product) => ({
-    ...product,
-    categoryId: slugify(product.category),
-    brand: site.name,
-    gallery: [product.image],
-  })),
-};
-
+/**
+ * Public catalogue for the storefront.
+ * Uses the anonymous key without cookies, so it can be cached and shared between visitors.
+ * Admin changes call updateTag("catalog") (see app/actions/catalog.ts) so edits show up immediately.
+ */
 export async function getStoreCatalog(): Promise<Catalog> {
-  try {
-    await connection();
-    const supabase = await createClient();
-    const [{ data: categoryRows, error: categoryError }, { data: productRows, error: productError }] = await Promise.all([
-      supabase.from("categories").select("*").eq("visible", true).order("sort_order"),
-      supabase.from("products").select("*, categories(name, slug)").eq("visibility", "published").order("created_at"),
-    ]);
-    if (categoryError || productError || !categoryRows?.length || !productRows?.length) return fallback;
+  "use cache";
+  cacheTag("catalog");
+  // Long enough that pages are fully prerendered (short-lived caches turn the page into a streamed "dynamic hole").
+  // Admin edits call updateTag("catalog"), so this never makes the owner wait to see a change.
+  cacheLife("hours");
 
-    const categories: Category[] = categoryRows.map((row) => ({
-      id: row.id,
-      name: row.name,
-      slug: row.slug,
-      description: row.description ?? "",
-      parentId: row.parent_id,
-      visible: row.visible,
-      sortOrder: row.sort_order,
-    }));
+  const supabase = createPublicClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const [categoryRes, productRes] = await Promise.all([
+    supabase.from("categories").select("*").eq("visible", true).order("sort_order"),
+    supabase.from("products").select("*, categories(name, slug)").eq("visibility", "published").order("created_at", { ascending: false }),
+  ]);
+  if (categoryRes.error) throw new Error(categoryRes.error.message);
+  if (productRes.error) throw new Error(productRes.error.message);
 
-    const products: Product[] = productRows
-      .filter((row) => !row.publish_date || new Date(row.publish_date).getTime() <= Date.now())
-      .map((row) => {
-        const joined = row.categories as { name?: string; slug?: string } | null;
-        return {
-          id: row.id,
-          slug: row.slug,
-          name: row.name,
-          brand: row.brand ?? site.name,
-          category: joined?.name ?? "Collection",
-          categoryId: row.category_id,
-          price: Number(row.price),
-          oldPrice: row.old_price == null ? undefined : Number(row.old_price),
-          image: row.image,
-          gallery: Array.isArray(row.gallery) && row.gallery.length ? row.gallery : [row.image],
-          color: row.color ?? "",
-          material: row.material ?? "",
-          description: row.description ?? "",
-          isNew: Boolean(row.is_new),
-        };
-      });
+  const categories: Category[] = (categoryRes.data ?? []).map((row) => ({
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    description: row.description ?? "",
+    parentId: row.parent_id,
+    visible: row.visible,
+    sortOrder: row.sort_order,
+  }));
 
-    return { categories, products };
-  } catch {
-    return fallback;
-  }
+  // Row-level security already hides scheduled products until their publish date for anonymous visitors.
+  const products: Product[] = (productRes.data ?? [])
+    .map((row) => {
+      const joined = (Array.isArray(row.categories) ? row.categories[0] : row.categories) as { name?: string; slug?: string } | null;
+      return {
+        id: row.id,
+        slug: row.slug,
+        name: row.name,
+        category: joined?.name ?? "",
+        categorySlug: joined?.slug ?? "",
+        categoryId: row.category_id,
+        brand: row.brand ?? site.name,
+        price: Number(row.price),
+        oldPrice: row.old_price == null ? undefined : Number(row.old_price),
+        image: row.image,
+        gallery: Array.isArray(row.gallery) && row.gallery.length ? row.gallery : [row.image],
+        color: row.color ?? "",
+        material: row.material ?? "",
+        description: row.description ?? "",
+        isNew: Boolean(row.is_new),
+      };
+    });
+
+  return { categories, products };
 }
 
 export async function getAdminCatalog() {

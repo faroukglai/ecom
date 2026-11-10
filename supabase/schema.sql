@@ -1,5 +1,7 @@
 -- Darivo store schema, policies, admin confirm, and catalog seed.
 -- Run once in the Supabase SQL editor.
+-- NOTE: after this file, also run migrations/20261110120000_lock_down_rls_and_atomic_orders.sql.
+-- It replaces the open "using (true)" policies below with admin-only ones and removes anon order inserts.
 
 create extension if not exists pgcrypto;
 

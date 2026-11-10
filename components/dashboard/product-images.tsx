@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Camera, ImagePlus, Link2, Star, Trash2, ChevronUp, ChevronDown } from "lucide-react";
+import { Icon } from "@/components/dashboard/icons";
 import { useDashLocale } from "@/components/dashboard/locale";
 
 export type ProductMediaItem = {
@@ -22,17 +22,18 @@ function isImageFile(file: File) {
 export function ProductImages({
   images,
   onChange,
+  errorMessage,
 }: {
   images: ProductMediaItem[];
   onChange: (images: ProductMediaItem[]) => void;
+  errorMessage?: string;
 }) {
-  const { t } = useDashLocale();
+  const { t, showError } = useDashLocale();
   const computerRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const [urlOpen, setUrlOpen] = useState(false);
   const [urlValue, setUrlValue] = useState("");
-  const [notice, setNotice] = useState("");
   const [dragId, setDragId] = useState<string | null>(null);
 
   function addFiles(list: File[]) {
@@ -57,7 +58,7 @@ export function ProductImages({
         file,
       });
     }
-    setNotice(messages[0] ?? "");
+    if (messages[0]) showError(messages[0]);
     onChange(next);
   }
 
@@ -66,12 +67,11 @@ export function ProductImages({
       const parsed = new URL(urlValue.trim());
       if (parsed.protocol !== "http:" && parsed.protocol !== "https:") throw new Error("protocol");
       if (images.length >= MAX_COUNT) {
-        setNotice(t.imageLimit);
+        showError(t.imageLimit);
         return;
       }
       const src = parsed.toString();
       if (images.some((image) => image.remote === src)) {
-        setNotice("");
         setUrlValue("");
         setUrlOpen(false);
         return;
@@ -79,9 +79,8 @@ export function ProductImages({
       onChange([...images, { id: crypto.randomUUID(), src, remote: src }]);
       setUrlValue("");
       setUrlOpen(false);
-      setNotice("");
     } catch {
-      setNotice(t.invalidImageUrl);
+      showError(t.invalidImageUrl);
     }
   }
 
@@ -110,8 +109,8 @@ export function ProductImages({
   }
 
   return (
-    <section className="dash-card">
-      <h2 style={{fontSize:18,marginBottom:8}}>{t.productImages}</h2>
+    <section className="dash-card" data-product-images data-invalid={Boolean(errorMessage)} tabIndex={-1}>
+      <div className="dash-card-head" style={{ marginBottom: 6 }}><h2 className="dash-card-title"><Icon name="image" size={17}/> {t.productImages}</h2></div>
       <p className="dash-help" style={{marginTop:0,marginBottom:14}}>{t.imageStudioHelp}</p>
       <div
         className={`dash-media-drop${over ? " is-over" : ""}`}
@@ -135,20 +134,21 @@ export function ProductImages({
           }
         }}
       >
-        <ImagePlus size={22} strokeWidth={1.6}/>
+        <Icon name="imageAdd" size={26}/>
         <strong>{t.dropImages}</strong>
         <span>{t.dropImagesHelp}</span>
         <div className="dash-media-actions">
           <button className="dash-btn ghost" type="button" onClick={() => computerRef.current?.click()}>
-            <ImagePlus size={15}/> {t.fromComputer}
+            <Icon name="image" size={16}/> {t.fromComputer}
           </button>
           <button className="dash-btn ghost" type="button" onClick={() => cameraRef.current?.click()}>
-            <Camera size={15}/> {t.fromCamera}
+            <Icon name="camera" size={16}/> {t.fromCamera}
           </button>
           <button className="dash-btn ghost" type="button" onClick={() => setUrlOpen((open) => !open)}>
-            <Link2 size={15}/> {t.fromUrl}
+            <Icon name="link" size={16}/> {t.fromUrl}
           </button>
         </div>
+        {errorMessage && <span className="dash-image-popover" role="alert">{errorMessage}</span>}
         <input
           ref={computerRef}
           className="dash-media-file"
@@ -189,7 +189,6 @@ export function ProductImages({
           <button className="dash-btn primary" type="button" onClick={addUrl}>{t.addUrl}</button>
         </div>
       ) : null}
-      {notice ? <p className="dash-login-error" role="alert">{notice}</p> : null}
       {images.length ? (
         <div className="dash-media-grid">
           {images.map((image, index) => (
@@ -205,14 +204,14 @@ export function ProductImages({
               {index === 0 ? <span className="dash-media-cover">{t.cover}</span> : null}
               <div className="dash-media-tools">
                 <button type="button" onClick={() => move(image.id, -1)} disabled={index === 0} aria-label={t.moveEarlier}>
-                  <ChevronUp size={14}/>
+                  <Icon name="arrowUp" size={15}/>
                 </button>
                 <button type="button" onClick={() => move(image.id, 1)} disabled={index === images.length - 1} aria-label={t.moveLater}>
-                  <ChevronDown size={14}/>
+                  <Icon name="arrowDown" size={15}/>
                 </button>
                 {index === 0 ? null : (
                   <button type="button" onClick={() => onChange([image, ...images.filter((item) => item.id !== image.id)])} aria-label={t.setAsCover}>
-                    <Star size={14}/>
+                    <Icon name="star" size={15}/>
                   </button>
                 )}
                 <button
@@ -224,7 +223,7 @@ export function ProductImages({
                     onChange(images.filter((item) => item.id !== image.id));
                   }}
                 >
-                  <Trash2 size={14}/>
+                  <Icon name="trash" size={15}/>
                 </button>
               </div>
             </article>

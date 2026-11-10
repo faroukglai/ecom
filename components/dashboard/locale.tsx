@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useContext, useMemo, useOptimistic, useTransition } from "react";
+import { createContext, useContext, useEffect, useMemo, useOptimistic, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Icon } from "@/components/dashboard/icons";
 import { dashCopy, parseDashLang, type DashLang } from "@/lib/dashboard-i18n";
 
 function persistLang(lang: DashLang) {
@@ -12,6 +13,7 @@ type LocaleContextValue = {
   lang: DashLang;
   t: (typeof dashCopy)[DashLang];
   setLang: (lang: DashLang) => void;
+  showError: (message: string) => void;
 };
 
 const LocaleContext = createContext<LocaleContextValue | null>(null);
@@ -20,10 +22,20 @@ export function DashLocaleProvider({ initialLang, children }: { initialLang: Das
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [lang, setOptimisticLang] = useOptimistic(initialLang);
+  const [error, setError] = useState<{ id: number; message: string } | null>(null);
+
+  useEffect(() => {
+    if (!error) return;
+    const timeout = window.setTimeout(() => setError(null), 8000);
+    return () => window.clearTimeout(timeout);
+  }, [error]);
 
   const value = useMemo<LocaleContextValue>(() => ({
     lang,
     t: dashCopy[lang],
+    showError(message) {
+      setError({ id: Date.now(), message });
+    },
     setLang(next) {
       const resolved = parseDashLang(next);
       persistLang(resolved);
@@ -40,7 +52,14 @@ export function DashLocaleProvider({ initialLang, children }: { initialLang: Das
     },
   }), [lang, router, setOptimisticLang]);
 
-  return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>;
+  return <LocaleContext.Provider value={value}>
+    {children}
+    {error && <div key={error.id} className="dash-error-toast" role="alert" dir={lang === "ar" ? "rtl" : "ltr"} lang={lang}>
+      <Icon name="alert" size={22}/>
+      <div><strong>{dashCopy[lang].errorTitle}</strong><span>{error.message}</span></div>
+      <button type="button" aria-label={dashCopy[lang].dismissError} onClick={() => setError(null)}><Icon name="close" size={18}/></button>
+    </div>}
+  </LocaleContext.Provider>;
 }
 
 export function useDashLocale() {
