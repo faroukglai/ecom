@@ -157,6 +157,8 @@ export const dashCopy = {
     statusShipped: "Shipped",
     statusDelivered: "Delivered",
     statusCancelled: "Cancelled",
+    statusRefused: "Refused",
+    statusReturned: "Returned",
     visPublished: "Published",
     visScheduled: "Scheduled",
     visHidden: "Hidden",
@@ -237,6 +239,18 @@ export const dashCopy = {
     loading: "Loading…",
     open: "Open",
     storeOwnerName: "Store owner",
+    actRefused: "Customer refused the parcel",
+    actReturned: "Mark as returned",
+    refusedConfirm: "Mark this order as refused at delivery?",
+    returnedConfirm: "Mark this order as returned?",
+    orderRefused: "The customer refused this parcel.",
+    orderReturned: "This order was returned.",
+    riskRefused: "{n} refused or returned before",
+    ordersBefore: "{n} other orders",
+    noteTitle: "Internal note",
+    notePlaceholder: "Only you can see this. Example: customer asked to call after 5 pm.",
+    saveNote: "Save note",
+    needsCall: "To confirm by phone",
   },
   ar: {
     storeName: "Darivo",
@@ -394,6 +408,8 @@ export const dashCopy = {
     statusShipped: "في الطريق",
     statusDelivered: "تم التسليم",
     statusCancelled: "ملغى",
+    statusRefused: "رفض الاستلام",
+    statusReturned: "مرتجع",
     visPublished: "منشور",
     visScheduled: "مجدول",
     visHidden: "مخفي",
@@ -474,6 +490,18 @@ export const dashCopy = {
     loading: "جاري التحميل…",
     open: "فتح",
     storeOwnerName: "صاحب المتجر",
+    actRefused: "العميل رفض الطرد",
+    actReturned: "تحديد كمرتجع",
+    refusedConfirm: "تحديد هذا الطلب كمرفوض عند التسليم؟",
+    returnedConfirm: "تحديد هذا الطلب كمرتجع؟",
+    orderRefused: "رفض العميل استلام هذا الطرد.",
+    orderReturned: "تم إرجاع هذا الطلب.",
+    riskRefused: "{n} طلبات مرفوضة أو مرتجعة سابقاً",
+    ordersBefore: "{n} طلبات أخرى",
+    noteTitle: "ملاحظة داخلية",
+    notePlaceholder: "لا يراها غيرك. مثال: طلب العميل الاتصال بعد الخامسة مساءً.",
+    saveNote: "حفظ الملاحظة",
+    needsCall: "بانتظار تأكيد هاتفي",
   },
 } as const;
 
@@ -498,6 +526,8 @@ export function orderStatusLabel(t: DashCopy, status: string) {
   if (status === "shipped") return t.statusShipped;
   if (status === "delivered") return t.statusDelivered;
   if (status === "cancelled") return t.statusCancelled;
+  if (status === "refused") return t.statusRefused;
+  if (status === "returned") return t.statusReturned;
   return status;
 }
 

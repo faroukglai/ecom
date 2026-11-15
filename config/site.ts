@@ -13,7 +13,7 @@ export const site = {
    */
   contact: {
     phone: "",
-    whatsapp: "",
+    whatsapp: "21621056480",
     facebook: "",
     instagram: "",
   },

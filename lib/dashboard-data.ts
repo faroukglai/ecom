@@ -1,7 +1,11 @@
 import type { DashCopy } from "@/lib/dashboard-i18n";
 
-export const ORDER_STATUSES = ["new", "confirmed", "shipped", "delivered", "cancelled"] as const;
+export const ORDER_STATUSES = ["new", "confirmed", "shipped", "delivered", "cancelled", "refused", "returned"] as const;
 export type OrderStatusKey = (typeof ORDER_STATUSES)[number];
+/** Orders that did not (or no longer) bring in money. */
+export const DEAD_STATUSES = ["cancelled", "refused", "returned"];
+export const isDeadStatus = (status: string) => DEAD_STATUSES.includes(status);
+
 export const FLOW = ["new", "confirmed", "shipped", "delivered"] as const;
 
 export const PAGE_SIZE = 20;

@@ -4,7 +4,7 @@ import { DashPage } from "@/components/dashboard/runtime";
 import { SetupNotice } from "@/components/dashboard/setup-notice";
 import { AreaChart, Delta, EmptyState, KpiCard, PageHeader, StatusPill } from "@/components/dashboard/ui";
 import { requireAdmin } from "@/lib/auth";
-import { initials, ORDER_STATUSES, percentChange } from "@/lib/dashboard-data";
+import { initials, isDeadStatus, ORDER_STATUSES, percentChange } from "@/lib/dashboard-data";
 import { dashDate, dashDayKey, dashMoney, fill, orderStatusLabel } from "@/lib/dashboard-i18n";
 import { getDashCopy } from "@/lib/dashboard-lang";
 
@@ -20,7 +20,7 @@ export default function DashboardHome({ searchParams }: { searchParams: SearchPa
   );
 }
 
-const sum = (rows: OrderRow[]) => rows.filter((row) => row.status !== "cancelled").reduce((total, row) => total + Number(row.total), 0);
+const sum = (rows: OrderRow[]) => rows.filter((row) => !isDeadStatus(row.status)).reduce((total, row) => total + Number(row.total), 0);
 
 async function Analytics({ searchParams }: { searchParams: SearchParams }) {
   const [{ lang, t }, raw] = await Promise.all([getDashCopy(), searchParams]);
@@ -54,8 +54,8 @@ async function Analytics({ searchParams }: { searchParams: SearchParams }) {
   const previous = all.filter((order) => new Date(order.created_at) < start);
   const revenue = sum(current);
   const previousRevenue = sum(previous);
-  const live = current.filter((order) => order.status !== "cancelled");
-  const previousLive = previous.filter((order) => order.status !== "cancelled");
+  const live = current.filter((order) => !isDeadStatus(order.status));
+  const previousLive = previous.filter((order) => !isDeadStatus(order.status));
   const aov = live.length ? revenue / live.length : 0;
   const previousAov = previousLive.length ? previousRevenue / previousLive.length : 0;
   const waiting = waitingRes.count ?? 0;
@@ -78,7 +78,7 @@ async function Analytics({ searchParams }: { searchParams: SearchParams }) {
   const products = new Map<string, { name: string; image: string; sold: number; revenue: number }>();
   for (const item of ((itemsRes.data ?? []) as unknown as ItemRow[])) {
     const order = Array.isArray(item.orders) ? item.orders[0] : item.orders;
-    if (!order || order.status === "cancelled") continue;
+    if (!order || isDeadStatus(order.status)) continue;
     const key = item.product_id ?? item.product_name;
     const entry = products.get(key) ?? { name: item.product_name, image: item.product_image, sold: 0, revenue: 0 };
     entry.sold += item.quantity;

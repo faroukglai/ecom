@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { updateOrderStatus } from "@/app/actions/catalog";
+import { updateOrderNote, updateOrderStatus } from "@/app/actions/catalog";
 import { CopyButton, PrintButton } from "@/components/dashboard/copy-button";
 import { DashActionForm } from "@/components/dashboard/action-form";
 import { Icon } from "@/components/dashboard/icons";
@@ -9,6 +9,7 @@ import { requireAdmin } from "@/lib/auth";
 import { FLOW, nextStatus, nextStatusLabel, telLink, whatsappLink } from "@/lib/dashboard-data";
 import { dashDate, dashMoney, fill, orderStatusLabel } from "@/lib/dashboard-i18n";
 import { getDashCopy } from "@/lib/dashboard-lang";
+import { phoneHistory, riskFor } from "@/lib/dashboard-risk";
 
 type Item = { id: string; product_name: string; product_image: string; quantity: number; unit_price: number | string };
 const stepIcons = ["packageProcess", "checkCircle", "packageMoving", "packageDelivered"] as const;
@@ -30,7 +31,9 @@ async function OrderBody({ params }: { params: Promise<{ id: string }> }) {
 
   const items = (order.order_items ?? []) as Item[];
   const status = String(order.status);
-  const cancelled = status === "cancelled";
+  const cancelled = status === "cancelled" || status === "refused" || status === "returned";
+  const history = await phoneHistory(supabase, [String(order.phone)]);
+  const risk = riskFor(history, String(order.phone), status, t);
   const index = FLOW.indexOf(status as (typeof FLOW)[number]);
   const next = nextStatus(status);
   const discount = Number(order.discount ?? 0);
@@ -54,7 +57,7 @@ async function OrderBody({ params }: { params: Promise<{ id: string }> }) {
           <section className="dash-card">
             <div className="dash-card-head"><h2 className="dash-card-title"><Icon name="truck" size={17}/> {t.orderProgress}</h2></div>
             {cancelled ? (
-              <div className="dash-banner cancelled"><Icon name="cancelCircle" size={20}/> {t.orderCancelled}</div>
+              <div className={`dash-banner ${status}`}><Icon name="cancelCircle" size={20}/> {status === "refused" ? t.orderRefused : status === "returned" ? t.orderReturned : t.orderCancelled}</div>
             ) : (
               <ol className="dash-steps" style={{ listStyle: "none", margin: 0, padding: 0 }}>
                 {FLOW.map((step, position) => {
@@ -106,6 +109,12 @@ async function OrderBody({ params }: { params: Promise<{ id: string }> }) {
                 {next ? (
                   <DashActionForm action={updateOrderStatus.bind(null, id, next)} submitLabel={<><Icon name="check" size={17}/> {nextStatusLabel(t, status)}</>} submitClassName="dash-btn primary"/>
                 ) : null}
+                {status === "shipped" ? (
+                  <DashActionForm action={updateOrderStatus.bind(null, id, "refused")} submitLabel={<><Icon name="packageOut" size={17}/> {t.actRefused}</>} submitClassName="dash-btn ghost" confirmMessage={t.refusedConfirm}/>
+                ) : null}
+                {status === "delivered" ? (
+                  <DashActionForm action={updateOrderStatus.bind(null, id, "returned")} submitLabel={<><Icon name="returnBox" size={17}/> {t.actReturned}</>} submitClassName="dash-btn ghost" confirmMessage={t.returnedConfirm}/>
+                ) : null}
                 {cancelled ? (
                   <DashActionForm action={updateOrderStatus.bind(null, id, "new")} submitLabel={t.actReopen} submitClassName="dash-btn ghost"/>
                 ) : status !== "delivered" ? (
@@ -124,7 +133,7 @@ async function OrderBody({ params }: { params: Promise<{ id: string }> }) {
               </div>
               <div className="dash-contact-line">
                 <span className="dash-chip"><Icon name="phone" size={16}/></span>
-                <span><small>{t.colPhone}</small><b><bdi className="dash-ltr">{order.phone}</bdi></b></span>
+                <span><small>{t.colPhone}</small><b><bdi className="dash-ltr">{order.phone}</bdi></b>{risk ? <span className={`dash-risk ${risk.level === "high" ? "high" : ""}`}><Icon name="alert" size={13}/> {risk.text}</span> : null}</span>
                 <CopyButton value={String(order.phone)}/>
               </div>
               <div className="dash-contact-line">
@@ -137,6 +146,13 @@ async function OrderBody({ params }: { params: Promise<{ id: string }> }) {
                 <a className="dash-btn ghost whatsapp" href={whatsappLink(String(order.phone), greeting)} target="_blank" rel="noreferrer"><Icon name="whatsapp" size={16}/> {t.whatsapp}</a>
               </div>
             </div>
+          </section>
+
+          <section className="dash-card dash-note dash-no-print">
+            <div className="dash-card-head"><h2 className="dash-card-title"><Icon name="note" size={17}/> {t.noteTitle}</h2></div>
+            <DashActionForm action={updateOrderNote.bind(null, id)} submitLabel={t.saveNote} submitClassName="dash-btn ghost">
+              <textarea name="note" defaultValue={String(order.note ?? "")} placeholder={t.notePlaceholder} maxLength={1000}/>
+            </DashActionForm>
           </section>
 
           <section className="dash-card">

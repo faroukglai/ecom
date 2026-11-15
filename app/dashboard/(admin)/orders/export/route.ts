@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     .limit(5000);
   if (error) return new Response("Export failed", { status: 500 });
 
-  const header = ["order_number", "created_at", "customer_name", "phone", "location", "status", "subtotal", "discount", "coupon", "shipping", "total", "payment_method"];
+  const header = ["order_number", "created_at", "customer_name", "phone", "location", "status", "note", "subtotal", "discount", "coupon", "shipping", "total", "payment_method"];
   const rows = (data ?? []).map((order: Record<string, unknown>) => header.map((key) => cell(order[key])).join(","));
   const body = `﻿${[header.join(","), ...rows].join("\r\n")}\r\n`;
   const stamp = new Date().toISOString().slice(0, 10);

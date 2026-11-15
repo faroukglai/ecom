@@ -124,11 +124,11 @@ export function OrderForm({ product, addons, lang }: { product: OrderProduct; ad
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lines, customer: { name, phone: `+216${phone}`, location } }),
+        body: JSON.stringify({ lines, website: get("website"), customer: { name, phone: `+216${phone}`, location } }),
       });
       const result: { orderNumber?: string; total?: number; shipping?: number } = await response.json().catch(() => ({}));
       if (!response.ok || !result.orderNumber) {
-        setFormError(t.errServer);
+        setFormError(response.status === 429 ? t.errRate : t.errServer);
         setOffline(true);
         return;
       }
@@ -163,6 +163,8 @@ export function OrderForm({ product, addons, lang }: { product: OrderProduct; ad
     <form ref={formRef} method="post" className="st-form" id="order-form" onSubmit={submit} onInput={saveDraft} onChange={saveDraft} onFocus={startCheckout} noValidate aria-busy={pending}>
       <h2>{t.formTitle}</h2>
       <p className="sub">{t.formSub}</p>
+      {/* Trap for bots: invisible to people, tempting to scripts. */}
+      <div className="st-honey" aria-hidden="true"><label>Website<input name="website" tabIndex={-1} autoComplete="off"/></label></div>
 
       <label className="st-field" {...field("name")}>
         {t.name}

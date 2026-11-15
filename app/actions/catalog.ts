@@ -208,10 +208,23 @@ export async function deleteCategory(id: string) {
   }
 }
 
+export async function updateOrderNote(id: string, formData: FormData) {
+  try {
+    const { supabase } = await requireAdmin();
+    const note = String(formData.get("note") ?? "").trim().slice(0, 1000);
+    const { error } = await supabase.from("orders").update({ note }).eq("id", id);
+    if (error) return { error: "action_failed" };
+    revalidatePath(`/dashboard/orders/${id}`);
+    return {};
+  } catch {
+    return { error: "action_failed" };
+  }
+}
+
 export async function updateOrderStatus(id: string, status: string) {
   try {
     const { supabase } = await requireAdmin();
-    const allowed = ["new", "confirmed", "shipped", "delivered", "cancelled"];
+    const allowed = ["new", "confirmed", "shipped", "delivered", "cancelled", "refused", "returned"];
     if (!allowed.includes(status)) return { error: "invalid_status" };
     const { error } = await supabase.from("orders").update({ status }).eq("id", id);
     if (error) return { error: "action_failed" };

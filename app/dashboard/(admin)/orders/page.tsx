@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth";
 import { applyOrderFilters, filtersToQuery, ORDER_STATUSES, PAGE_SIZE, parseOrderFilters, telLink, whatsappLink } from "@/lib/dashboard-data";
 import { dashDate, dashMoney, fill, orderStatusLabel } from "@/lib/dashboard-i18n";
 import { getDashCopy } from "@/lib/dashboard-lang";
+import { phoneHistory, riskFor } from "@/lib/dashboard-risk";
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 type OrderRow = { id: string; order_number: string; customer_name: string; phone: string; location: string; total: number | string; status: string; created_at: string };
@@ -33,6 +34,7 @@ async function OrdersBody({ searchParams }: { searchParams: SearchParams }) {
 
   const orders = (pageRes.data ?? []) as OrderRow[];
   const total = pageRes.count ?? orders.length;
+  const history = await phoneHistory(supabase, orders.map((order) => order.phone));
   const statusRows = (statusRes.data ?? []) as { status: string }[];
   const counts: Record<string, number> = { all: statusRows.length };
   for (const row of statusRows) counts[row.status] = (counts[row.status] ?? 0) + 1;
@@ -90,7 +92,7 @@ async function OrdersBody({ searchParams }: { searchParams: SearchParams }) {
                         </span></div>
                       </td>
                       <td data-label={t.colCustomer}>
-                        <div className="dash-cell"><span><strong>{order.customer_name}</strong><small><bdi className="dash-ltr">{order.phone}</bdi></small></span></div>
+                        <div className="dash-cell"><span><strong>{order.customer_name}</strong><small><bdi className="dash-ltr">{order.phone}</bdi></small>{(() => { const risk = riskFor(history, order.phone, order.status, t); return risk ? <span className={`dash-risk ${risk.level === "high" ? "high" : ""}`}><Icon name="alert" size={13}/> {risk.text}</span> : null; })()}</span></div>
                       </td>
                       <td className="hide-sm" data-label={t.colLocation} style={{ maxWidth: 240 }}><span className="dash-muted">{order.location}</span></td>
                       <td className="num end" data-label={t.colTotal}><strong>{dashMoney(Number(order.total), lang)}</strong></td>

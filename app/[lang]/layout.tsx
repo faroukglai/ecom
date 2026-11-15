@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { StoreFooter } from "@/components/store/footer";
 import { StoreHeader } from "@/components/store/header";
 import { MetaPixel } from "@/components/store/pixel";
+import { WhatsAppFab } from "@/components/store/whatsapp-fab";
 import { LANGS, getCopy, hasLang } from "@/lib/store-i18n";
 import "./store.css";
 
@@ -36,6 +37,7 @@ async function LocalizedShell({ children, params }: Props) {
       <StoreHeader lang={lang}/>
       <main id="main" className="st-wrap st-main">{children}</main>
       <StoreFooter lang={lang}/>
+      <WhatsAppFab lang={lang}/>
       <MetaPixel/>
     </div>
   );
